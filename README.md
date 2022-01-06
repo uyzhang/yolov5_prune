@@ -12,7 +12,7 @@ Convert dataset to trainable format : [converter](https://github.com/ZJU-lishuan
 2. Basic training
     ```python
     python train.py --img 640 --batch 32 --epochs 100 --weights weights/yolov5s.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
-```
+    ```
 
 3. Sparse training
     ```shell
