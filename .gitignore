@@ -255,4 +255,4 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-weights/
+weights*
