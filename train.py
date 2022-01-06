@@ -26,6 +26,7 @@ from utils.datasets import create_dataloader
 from utils.callbacks import Callbacks
 from utils.autobatch import check_train_batch_size
 from utils.autoanchor import check_anchors
+from utils.prune_utils import get_ignore_bn, get_bn_weights
 from models.yolo import Model
 from models.experimental import attempt_load
 import val  # for end-of-epoch mAP
@@ -120,7 +121,12 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
         ckpt = torch.load(weights, map_location=device)  # load checkpoint
-        model = Model(cfg or ckpt['model'].yaml, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
+        if opt.ft_pruned_model:
+            srtmp = 0
+            model = Model(ckpt["model"].yaml, ch=3, nc=nc, anchors=hyp.get(
+                'anchors'), mask_bn=ckpt["model"].mask_bn).to(device)  # create
+        else:
+            model = Model(cfg or ckpt['model'].yaml, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
         csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
@@ -186,7 +192,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
 
     # Resume
     start_epoch, best_fitness = 0, 0.0
-    if pretrained:
+    if pretrained and not opt.ft_pruned_model:
         # Optimizer
         if ckpt['optimizer'] is not None:
             optimizer.load_state_dict(ckpt['optimizer'])
@@ -280,15 +286,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                 f"Logging results to {colorstr('bold', save_dir)}\n"
                 f'Starting training for {epochs} epochs...')
 
-    if opt.bn_sparsity:
-        ignore_bn_list = []
-        for k, m in model.named_modules():
-            if isinstance(m, Bottleneck):
-                if m.add:
-                    ignore_bn_list.append(
-                        k.rsplit(".", 2)[0] + ".cv1.bn")
-                    ignore_bn_list.append(k + '.cv1.bn')
-                    ignore_bn_list.append(k + '.cv2.bn')
+    if opt.bn_sparsity or opt.ft_pruned_model:
+        ignore_bn_list = get_ignore_bn(model)
 
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
@@ -399,22 +398,9 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         lr = [x['lr'] for x in optimizer.param_groups]  # for loggers
         scheduler.step()
 
-        if opt.bn_sparsity:
+        if opt.bn_sparsity or opt.ft_pruned_model:
             # Show BN weight distribution
-            module_list = []
-            for j, layer in model.named_modules():
-                if isinstance(layer, nn.BatchNorm2d) and j not in ignore_bn_list:
-                    bnw = layer.state_dict()['weight']
-                    module_list.append(bnw)
-
-            size_list = [idx.data.shape[0] for idx in module_list]
-
-            bn_weights = torch.zeros(sum(size_list))
-            index = 0
-            for idx, size in enumerate(size_list):
-                bn_weights[index:(index + size)
-                           ] = module_list[idx].data.abs().clone()
-                index += size
+            bn_weights = get_bn_weights(model, ignore_bn_list)
 
         if RANK in [-1, 0]:
             # mAP
@@ -437,12 +423,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
             fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
             if fi > best_fitness:
                 best_fitness = fi
-            if not opt.bn_sparsity:
-                log_vals = list(mloss) + list(results) + lr
-                callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
-            else:
+            if opt.bn_sparsity or opt.ft_pruned_model:
                 log_vals = list(mloss) + list(results) + lr + [srtmp]
                 callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi, bn_weights=bn_weights.numpy())
+            else:
+                log_vals = list(mloss) + list(results) + lr
+                callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
+
             # Save model
             if (not nosave) or (final_epoch and not evolve):  # if save
                 ckpt = {'epoch': epoch,
@@ -553,6 +540,7 @@ def parse_opt(known=False):
     # Sparsity training
     parser.add_argument('--bn_sparsity', action='store_true', help='train with L1 sparsity normalization')
     parser.add_argument('--sparsity_rate', type=float, default=0.0001, help='L1 normal sparse rate')
+    parser.add_argument('--ft_pruned_model', action='store_true', help='finetune pruned model')
     opt = parser.parse_known_args()[0] if known else parser.parse_args()
     return opt
 

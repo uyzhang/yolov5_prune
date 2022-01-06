@@ -38,6 +38,14 @@ TensorFlow.js:
     $ npm start
 """
 
+from utils.torch_utils import select_device
+from utils.general import (LOGGER, check_dataset, check_img_size, check_requirements, colorstr, file_size, print_args,
+                           url2file)
+from utils.datasets import LoadImages
+from utils.activations import SiLU
+from models.yolo import Detect
+from models.experimental import attempt_load
+from models.common import Conv
 import argparse
 import json
 import os
@@ -55,15 +63,6 @@ ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
-from models.common import Conv
-from models.experimental import attempt_load
-from models.yolo import Detect
-from utils.activations import SiLU
-from utils.datasets import LoadImages
-from utils.general import (LOGGER, check_dataset, check_img_size, check_requirements, colorstr, file_size, print_args,
-                           url2file)
-from utils.torch_utils import select_device
 
 
 def export_torchscript(model, im, file, optimize, prefix=colorstr('TorchScript:')):
@@ -391,7 +390,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     device = select_device(device)
     assert not (device.type == 'cpu' and half), '--half only compatible with GPU export, i.e. use --device 0'
     model = attempt_load(weights, map_location=device, inplace=True, fuse=True)  # load FP32 model
-    nc, names = model.nc, model.names  # number of classes, class names
 
     # Input
     gs = int(max(model.stride))  # grid size (max stride)

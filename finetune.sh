@@ -1,0 +1,1 @@
+python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp2/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml

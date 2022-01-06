@@ -1,5 +1,5 @@
 ### Introduction
-Clean code version of yolov5 pruning.
+Clean code version of [yolov5](https://github.com/ultralytics/yolov5/) pruning.
 
 The original code comes from : https://github.com/midasklr/yolov5prune.
 
@@ -25,7 +25,9 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
     ```
 
 5. Fine-tuning
-
+    ```shell
+    python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp2/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
+    ```
 ### Experiments
 TODO
 
