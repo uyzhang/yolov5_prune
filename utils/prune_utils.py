@@ -2,6 +2,7 @@ import torch
 from models.common import Bottleneck
 import yaml
 from torch import nn
+import numpy as np
 
 
 def get_bn_list(model):
@@ -87,6 +88,80 @@ def get_mask_bn(model, ignore_bn_list, thre_prune):
             )) > 0, "Current remaining channel must greater than 0!!! please set prune percent to lower thesh, or you can retrain a more sparse model..."
     print("=" * 94)
     return model, mask_bn
+
+
+def prune_model_load_weight(model, pruned_model, mask_bn):
+    model_state = model.state_dict()
+    from_to_map = pruned_model.from_to_map
+    pruned_model_state = pruned_model.state_dict()
+
+    assert pruned_model_state.keys() == model_state.keys()
+    changed_state = []
+    for ((layername, layer), (pruned_layername, pruned_layer)) in zip(model.named_modules(), pruned_model.named_modules()):
+        assert layername == pruned_layername
+        if isinstance(layer, nn.Conv2d) and not layername.startswith("model.24"):
+            convname = layername[:-4] + "bn"
+            if convname in from_to_map.keys():
+                former = from_to_map[convname]
+                if isinstance(former, str):
+                    out_idx = np.squeeze(np.argwhere(np.asarray(
+                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                    in_idx = np.squeeze(np.argwhere(
+                        np.asarray(mask_bn[former].cpu().numpy())))
+                    w = layer.weight.data[:, in_idx, :, :].clone()
+
+                    if len(w.shape) == 3:     # remain only 1 channel.
+                        w = w.unsqueeze(1)
+                    w = w[out_idx, :, :, :].clone()
+
+                    pruned_layer.weight.data = w.clone()
+                    changed_state.append(layername + ".weight")
+                if isinstance(former, list):
+                    orignin = [model_state[i + ".weight"].shape[0]
+                               for i in former]
+                    formerin = []
+                    for it in range(len(former)):
+                        name = former[it]
+                        tmp = [i for i in range(
+                            mask_bn[name].shape[0]) if mask_bn[name][i] == 1]
+                        if it > 0:
+                            tmp = [k + sum(orignin[:it]) for k in tmp]
+                        formerin.extend(tmp)
+                    out_idx = np.squeeze(np.argwhere(np.asarray(
+                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                    w = layer.weight.data[out_idx, :, :, :].clone()
+                    pruned_layer.weight.data = w[:, formerin, :, :].clone()
+                    changed_state.append(layername + ".weight")
+            else:
+                out_idx = np.squeeze(np.argwhere(np.asarray(
+                    mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                w = layer.weight.data[out_idx, :, :, :].clone()
+                assert len(w.shape) == 4
+                pruned_layer.weight.data = w.clone()
+                changed_state.append(layername + ".weight")
+
+        if isinstance(layer, nn.BatchNorm2d):
+            out_idx = np.squeeze(np.argwhere(
+                np.asarray(mask_bn[layername].cpu().numpy())))
+            pruned_layer.weight.data = layer.weight.data[out_idx].clone()
+            pruned_layer.bias.data = layer.bias.data[out_idx].clone()
+            pruned_layer.running_mean = layer.running_mean[out_idx].clone()
+            pruned_layer.running_var = layer.running_var[out_idx].clone()
+            changed_state.append(layername + ".weight")
+            changed_state.append(layername + ".bias")
+            changed_state.append(layername + ".running_mean")
+            changed_state.append(layername + ".running_var")
+            changed_state.append(layername + ".num_batches_tracked")
+
+        if isinstance(layer, nn.Conv2d) and layername.startswith("model.24"):
+            former = from_to_map[layername]
+            in_idx = np.squeeze(np.argwhere(
+                np.asarray(mask_bn[former].cpu().numpy())))
+            pruned_layer.weight.data = layer.weight.data[:, in_idx, :, :]
+            pruned_layer.bias.data = layer.bias.data
+            changed_state.append(layername + ".weight")
+            changed_state.append(layername + ".bias")
+    return pruned_model
 
 
 def gather_bn_weights(module_list):

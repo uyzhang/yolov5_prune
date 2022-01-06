@@ -6,6 +6,7 @@ Usage:
     $ python path/to/val.py --data coco128.yaml --weights yolov5s.pt --img 640
 """
 
+from operator import mod
 from models.yolo import *
 from utils.torch_utils import select_device
 from utils.general import (check_dataset, check_img_size, check_yaml,
@@ -19,7 +20,7 @@ import sys
 from pathlib import Path
 import numpy as np
 import torch
-from utils.prune_utils import get_mask_bn, get_prune_threshold, get_bn_list, get_pruned_yaml
+from utils.prune_utils import get_mask_bn, get_prune_threshold, get_bn_list, get_pruned_yaml, prune_model_load_weight
 import val
 
 FILE = Path(__file__).resolve()
@@ -87,7 +88,7 @@ def prune(data,
 
     # Configure
     model = model.model
-    model_state = model.state_dict()
+
     model.eval()
 
     # prune model start
@@ -107,77 +108,7 @@ def prune(data,
         elif type(m) is Conv:
             m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
 
-    from_to_map = pruned_model.from_to_map
-    pruned_model_state = pruned_model.state_dict()
-
-    assert pruned_model_state.keys() == model_state.keys()
-    changed_state = []
-    for ((layername, layer), (pruned_layername, pruned_layer)) in zip(model.named_modules(), pruned_model.named_modules()):
-        assert layername == pruned_layername
-        if isinstance(layer, nn.Conv2d) and not layername.startswith("model.24"):
-            convname = layername[:-4] + "bn"
-            if convname in from_to_map.keys():
-                former = from_to_map[convname]
-                if isinstance(former, str):
-                    out_idx = np.squeeze(np.argwhere(np.asarray(
-                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                    in_idx = np.squeeze(np.argwhere(
-                        np.asarray(mask_bn[former].cpu().numpy())))
-                    w = layer.weight.data[:, in_idx, :, :].clone()
-
-                    if len(w.shape) == 3:     # remain only 1 channel.
-                        w = w.unsqueeze(1)
-                    w = w[out_idx, :, :, :].clone()
-
-                    pruned_layer.weight.data = w.clone()
-                    changed_state.append(layername + ".weight")
-                if isinstance(former, list):
-                    orignin = [model_state[i + ".weight"].shape[0]
-                               for i in former]
-                    formerin = []
-                    for it in range(len(former)):
-                        name = former[it]
-                        tmp = [i for i in range(
-                            mask_bn[name].shape[0]) if mask_bn[name][i] == 1]
-                        if it > 0:
-                            tmp = [k + sum(orignin[:it]) for k in tmp]
-                        formerin.extend(tmp)
-                    out_idx = np.squeeze(np.argwhere(np.asarray(
-                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                    w = layer.weight.data[out_idx, :, :, :].clone()
-                    pruned_layer.weight.data = w[:, formerin, :, :].clone()
-                    changed_state.append(layername + ".weight")
-            else:
-                out_idx = np.squeeze(np.argwhere(np.asarray(
-                    mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                w = layer.weight.data[out_idx, :, :, :].clone()
-                assert len(w.shape) == 4
-                pruned_layer.weight.data = w.clone()
-                changed_state.append(layername + ".weight")
-
-        if isinstance(layer, nn.BatchNorm2d):
-            out_idx = np.squeeze(np.argwhere(
-                np.asarray(mask_bn[layername].cpu().numpy())))
-            pruned_layer.weight.data = layer.weight.data[out_idx].clone()
-            pruned_layer.bias.data = layer.bias.data[out_idx].clone()
-            pruned_layer.running_mean = layer.running_mean[out_idx].clone()
-            pruned_layer.running_var = layer.running_var[out_idx].clone()
-            changed_state.append(layername + ".weight")
-            changed_state.append(layername + ".bias")
-            changed_state.append(layername + ".running_mean")
-            changed_state.append(layername + ".running_var")
-            changed_state.append(layername + ".num_batches_tracked")
-
-        if isinstance(layer, nn.Conv2d) and layername.startswith("model.24"):
-            former = from_to_map[layername]
-            in_idx = np.squeeze(np.argwhere(
-                np.asarray(mask_bn[former].cpu().numpy())))
-            pruned_layer.weight.data = layer.weight.data[:, in_idx, :, :]
-            pruned_layer.bias.data = layer.bias.data
-            changed_state.append(layername + ".weight")
-            changed_state.append(layername + ".bias")
-
-    pruned_model.eval()
+    pruned_model = prune_model_load_weight(model, pruned_model, mask_bn)
     pruned_model.names = model.names
     # prune model end
 
@@ -185,8 +116,7 @@ def prune(data,
     torch.save({"model": model}, save_dir / "pruned_model.pt")
     model.cuda().eval()
 
-    is_coco = isinstance(data.get('val'), str) and data['val'].endswith(
-        'coco/val2017.txt')  # COCO dataset
+    is_coco = isinstance(data.get('val'), str) and data['val'].endswith('coco/val2017.txt')  # COCO dataset
 
     # Dataloader
     if not training:
