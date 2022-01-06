@@ -10,7 +10,7 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
     Convert dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py).
 
 2. Basic training
-    ```python
+    ```shell
     python train.py --img 640 --batch 32 --epochs 100 --weights weights/yolov5s.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
     ```
 
