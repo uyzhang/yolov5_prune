@@ -1,0 +1,1 @@
+python train.py --img 640 --batch 32 --epochs 100 --weights runs/train/coco_hand/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.0001 --device 3
