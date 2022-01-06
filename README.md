@@ -1,11 +1,12 @@
 ### Introduction
-Clean code version of yolov5 pruning
-The original code comes from : https://github.com/midasklr/yolov5prune
+Clean code version of yolov5 pruning.
+
+The original code comes from : https://github.com/midasklr/yolov5prune.
 
 ### Steps:
 1. Dataset preparation
-[COCO Hand](http://www.robots.ox.ac.uk/~vgg/data/hands/downloads/hand_dataset.tar.gz) Dataset Download
-Convert dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py)
+[COCO Hand](http://www.robots.ox.ac.uk/~vgg/data/hands/downloads/hand_dataset.tar.gz) Dataset Download.
+Convert dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py).
 
 2. Basic training
 ```python
