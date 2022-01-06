@@ -1,5 +1,5 @@
 ### Introduction
-Clean code version of [yolov5](https://github.com/ultralytics/yolov5/) pruning.
+Clean code version of [yolov5](https://github.com/ultralytics/yolov5/)(V6) pruning.
 
 The original code comes from : https://github.com/midasklr/yolov5prune.
 
