@@ -29,6 +29,11 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
     python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp2/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
     ```
 ### Experiments
-TODO
 
-
+| model             | input size | mAP@.5       | Speed NVIDIA TX2(ms) | model size(MB) |
+| ----------------- | ---- | ------------ | ---------------- | -------------------- |
+| yolov5s           | 640  | 0.8832 | 44                                | 28M
+| yolov5s-20%prune  | 640  | 0.8831  | 40                                   | 20M
+| yolov5s-30%prune  | 640  | 0.8839  | 38                             |18M
+| yolov5s-40%prune  | 640  | 0.8840  | 36                             |15M
+| yolov5s-50%prune  | 640  | 0.8850 | 34                            | 11M

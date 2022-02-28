@@ -256,3 +256,4 @@ crashlytics-build.properties
 fabric.properties
 
 weights*
+tensorrt*
