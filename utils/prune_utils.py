@@ -63,7 +63,10 @@ def get_prune_threshold(model_list, percent):
 
     highest_thre = min(highest_thre)
     # 找到highest_thre对应的下标对应的百分比
-    percent_threshold = (sorted_bn == highest_thre).nonzero().squeeze().item() / len(bn_weights)
+    threshold_index = (sorted_bn == highest_thre).nonzero().squeeze()
+    if len(threshold_index.shape) > 0:
+        threshold_index = threshold_index[0]
+    percent_threshold = threshold_index.item() / len(bn_weights)
     print('Suggested Gamma threshold should be less than {}'.format(highest_thre))
     print('The corresponding prune ratio is {}, but you can set higher'.format(percent_threshold))
     thre_index = int(len(sorted_bn) * percent)

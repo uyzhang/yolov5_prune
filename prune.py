@@ -60,6 +60,7 @@ def prune(data,
           plots=True,
           callbacks=Callbacks(),
           compute_loss=None,
+          val_in_prune=True,
           ):
 
     # Initialize/load model and set device
@@ -128,20 +129,21 @@ def prune(data,
         task = task if task in ('train', 'val', 'test') else 'val'
         dataloader = create_dataloader(data[task], imgsz, batch_size, stride, single_cls, pad=pad, rect=pt,
                                        workers=workers, prefix=colorstr(f'{task}: '))[0]
-    results, _, _ = val.run(data,
-                            batch_size=batch_size,
-                            imgsz=imgsz,
-                            model=model,
-                            iou_thres=0.65 if is_coco else 0.60,  # best pycocotools results at 0.65
-                            single_cls=single_cls,
-                            dataloader=dataloader,
-                            save_dir=save_dir,
-                            save_json=is_coco,
-                            verbose=True,
-                            plots=True,
-                            callbacks=callbacks,
-                            compute_loss=compute_loss)
-    return results
+    if val_in_prune:
+        results, _, _ = val.run(data,
+                                batch_size=batch_size,
+                                imgsz=imgsz,
+                                model=model,
+                                iou_thres=0.65 if is_coco else 0.60,  # best pycocotools results at 0.65
+                                single_cls=single_cls,
+                                dataloader=dataloader,
+                                save_dir=save_dir,
+                                save_json=is_coco,
+                                verbose=True,
+                                plots=True,
+                                callbacks=callbacks,
+                                compute_loss=compute_loss)
+        return results
 
 
 def parse_opt():
@@ -191,6 +193,7 @@ def parse_opt():
                         help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true',
                         help='use OpenCV DNN for ONNX inference')
+    parser.add_argument('--val_in_prune', action='store_true')
     opt = parser.parse_args()
     opt.data = check_yaml(opt.data)  # check YAML
     opt.save_json |= opt.data.endswith('coco.yaml')
@@ -205,6 +208,10 @@ def main():
     params_prune = params.copy()
     params.pop('cfg')
     params.pop('percent')
+    if not opt.val_in_prune:
+        prune(**params_prune)
+        return
+    params.pop('val_in_prune')
     results_origin, _, _ = val.run(**params)
     results_prune = prune(**params_prune)
     names = ['P', 'R', 'mAP@.5', 'mAP@.5:.95']
