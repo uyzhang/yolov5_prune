@@ -8,7 +8,7 @@ Usage:
 
 from operator import mod
 from models.yolo import *
-from utils.torch_utils import select_device
+from utils.torch_utils import select_device, de_parallel
 from utils.general import (check_dataset, check_img_size, check_yaml,
                            colorstr, increment_path, print_args)
 from utils.datasets import create_dataloader
@@ -100,7 +100,6 @@ def prune(data,
     # bn weight need to be pruned(masked)
     model, mask_bn = get_mask_bn(model, ignore_bn_list, get_prune_threshold(model_list, percent))
     pruned_model = Model(cfg=pruned_yaml, ch=3, mask_bn=mask_bn).cuda()
-    print(pruned_model)
 
     # Compatibility updates
     for m in pruned_model.modules():
@@ -113,17 +112,15 @@ def prune(data,
     pruned_model.names = model.names
     # prune model end
 
-    model = pruned_model
-    torch.save({"model": model}, save_dir / "pruned_model.pt")
-    model.cuda().eval()
-
+    torch.save({'model': deepcopy(de_parallel(pruned_model)).half(), }, save_dir / "pruned_model.pt")
+    pruned_model.cuda().eval()
     is_coco = isinstance(data.get('val'), str) and data['val'].endswith('coco/val2017.txt')  # COCO dataset
 
     # Dataloader
     if not training:
         if device.type != 'cpu':
-            model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(
-                next(model.parameters())))  # run once
+            pruned_model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(
+                next(pruned_model.parameters())))  # run once
         pad = 0.0 if task == 'speed' else 0.5
 
         task = task if task in ('train', 'val', 'test') else 'val'
@@ -133,7 +130,7 @@ def prune(data,
         results, _, _ = val.run(data,
                                 batch_size=batch_size,
                                 imgsz=imgsz,
-                                model=model,
+                                model=pruned_model,
                                 iou_thres=0.65 if is_coco else 0.60,  # best pycocotools results at 0.65
                                 single_cls=single_cls,
                                 dataloader=dataloader,

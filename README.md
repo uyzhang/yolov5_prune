@@ -5,35 +5,71 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
 
 ### Steps:
 1. Dataset preparation
-    [COCO Hand](http://www.robots.ox.ac.uk/~vgg/data/hands/downloads/hand_dataset.tar.gz) Dataset Download.
+    [COCO Hand](http://www.robots.ox.ac.uk/~vgg/data/hands/downloads/hand_dataset.tar.gz) Dataset Download.(COCO Dataset can be prepared according to the steps of the official repository.)
 
-    Convert dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py).
-
+    Convert COCO Hand Dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py).
+    
 2. Basic training
-    ```shell
-    python train.py --img 640 --batch 32 --epochs 100 --weights weights/yolov5s.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
-    ```
-
+    - In COCO Hand Dataset
+        ```shell
+        python train.py --img 640 --batch 32 --epochs 100 --weights weights/yolov5s.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
+        ```
+    - In COCO Dataset
+        ```shell
+        python train.py --data coco.yaml --cfg yolov5s.yaml --weights '' --batch-size 32 --device 0 --epochs 300 --name coco --optimizer AdamW --data data/coco.yaml
+        ```
 3. Sparse training
-    ```shell
-    python train.py --img 640 --batch 32 --epochs 100 --weights runs/train/coco_hand/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.0001 --device 3
-    ```
+    - In COCO Hand Dataset
+        ```shell
+        python train.py --img 640 --batch 32 --epochs 100 --weights runs/train/coco_hand/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.0001 --device 3
+        ```
+    - In COCO Dataset
+        ```shell
+        python train.py --batch 32 --epochs 50 --weights weights/yolov5s.pt --data data/coco.yaml --cfg models/yolov5s.yaml --name coco_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.00005 --device 0
+        ```
 
 4. Pruning
-    ```shell
-    python prune.py --percent 0.5 --weights runs/train/coco_hand_sparsity6/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --imgsz 640
-    ```
+    - In COCO Hand Dataset
+        ```shell
+        python prune.py --percent 0.5 --weights runs/train/coco_hand_sparsity6/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --imgsz 640
+        ```
+    - In COCO Dataset
+        ```shell
+        python prune.py --percent 0.5 --weights runs/train/coco_sparsity13/weights/last.pt --data data/coco.yaml --cfg models/yolov5s.yaml --imgsz 640
+        ```
 
 5. Fine-tuning
-    ```shell
-    python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp2/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
-    ```
+    - In COCO Hand Dataset
+        ```shell
+        python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp1/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
+        ```
+    - In COCO Dataset
+        ```shell
+        python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp1/pruned_model.pt  --data data/coco.yaml --cfg models/yolov5s.yaml --name coco_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
+        ```
 ### Experiments
+- Result of COCO Hand Dataset
 
-| model             | input size | mAP@.5       | Speed NVIDIA TX2(ms) | model size(MB) |
-| ----------------- | ---- | ------------ | ---------------- | -------------------- |
-| yolov5s           | 640  | 0.8832 | 44                                | 28M
-| yolov5s-20%prune  | 640  | 0.8831  | 40                                   | 20M
-| yolov5s-30%prune  | 640  | 0.8839  | 38                             |18M
-| yolov5s-40%prune  | 640  | 0.8840  | 36                             |15M
-| yolov5s-50%prune  | 640  | 0.8850 | 34                            | 11M
+    | model             | input size | mAP@.5       | Speed NVIDIA TX2(ms) | model size(MB) |
+    | ----------------- | ---- | ------------ | ---------------- | -------------------- |
+    | yolov5s           | 640  | 0.8832 | 44                                | 28M
+    | yolov5s-20%prune  | 640  | 0.8831  | 40                                   | 20M
+    | yolov5s-30%prune  | 640  | 0.8839  | 38                             |18M
+    | yolov5s-40%prune  | 640  | 0.8840  | 36                             |15M
+    | yolov5s-50%prune  | 640  | 0.8850 | 34                            | 11M
+- Result of COCO Dataset
+    | exp\_name        | model   | optim&epoch | lr     | sparity | mAP@.5  | note                | prune threshold | BN weight distribution                                                           | Weight |
+    | ---------------- | ------- | ----------- | ------ | ------- | ------- | ------------------- | --------------- | -------------------------------------------------------------------------------- | ------------ |
+    | coco             | yolov5s | adamw 100   | 0.01   | \-      | 0.5402  | \-                  | \-              | \-                                                                               | [last.pt](https://drive.google.com/drive/folders/11ww0rpmDXR6UUOoK0ej32TKF_Dr57_BC?usp=sharing)   |
+    | coco2            | yolov5s | adamw 300   | 0.01   | \-      | 0.5534  | \-                  | \-              | \-                                                                               | [last.pt](https://drive.google.com/drive/folders/1BNx7mUvw3eVcrLi16PtHGBJcw2IUgsSP?usp=sharing)   |
+    | coco\_sparsity   | yolov5s | adamw 50    | 0.0032 | 0.0001  | 0.4826  | resume official SGD | 0.54            | ![](https://docimg8.docs.qq.com/image/37lM2bxXOohzeYLQzhsU0g.png?w=1322&h=826/)  | \-           |
+    | coco\_sparsity2  | yolov5s | adamw 50    | 0.0032 | 0.00005 | 0.50354 | resume official SGD | 0.48            | ![](https://docimg8.docs.qq.com/image/fsUuusfnXh0QqNIzBsQorA.png?w=1342&h=822/)  | \-           |
+    | coco\_sparsity3  | yolov5s | adamw 50    | 0.0032 | 0.0005  | 0.39514 | resume official SGD | 0.576           | ![](https://docimg10.docs.qq.com/image/56lYy7Ig1U9aKtv3JoaVuw.png?w=1330&h=864/) | \-           |
+    | coco\_sparsity4  | yolov5s | adamw 50    | 0.0032 | 0.001   | 0.34889 | resume official SGD | 0.576           | ![](https://docimg2.docs.qq.com/image/PoOcEBkq8k5yAHHuLMTX2w.png?w=1292&h=852/)  | \-           |
+    | coco\_sparsity5  | yolov5s | adamw 50    | 0.0032 | 0.00001 | 0.52948 | resume official SGD | 0.579           | ![](https://docimg7.docs.qq.com/image/8sQYKDSEny6fE1-aD-i1PA.png?w=1308&h=842/)  | \-           |
+    | coco\_sparsity6  | yolov5s | adamw 50    | 0.01   | 0.0005  | 0.51202 | resume coco         | 0.564           | ![](https://docimg2.docs.qq.com/image/mi5sH-NIcOfhCA5UvblkGQ.png?w=1314&h=758/)  | \-           |
+    | coco\_sparsity10 | yolov5s | adamw 50    | 0.01   | 0.001   | 0.49504 | resume coco2        | 0.6             | ![](https://docimg10.docs.qq.com/image/IHpHc5QDZlH4qvX8C14-Uw.png?w=1326&h=826/) | \-           |
+    | coco\_sparsity11 | yolov5s | adamw 50    | 0.01   | 0.0005  | 0.52609 | resume coco2        | 0.6             | ![](https://docimg8.docs.qq.com/image/txnqJ5L1PjO96e2DvMPuFQ.png?w=1320&h=826/)  | \-           |
+    | coco\_sparsity13 | yolov5s | adamw 100   | 0.01   | 0.0005  | 0.533   | resume coco2        | 0.55            | ![](https://docimg2.docs.qq.com/image/Y0eW6Fg3GxQDNT0pUcHqZw.png?w=1314&h=768/)  | [last.pt](https://drive.google.com/drive/folders/13OLCG6qjtFfo-umV-hFdjkT7n32N5JTH?usp=sharing)           |
+    | coco\_sparsity14 | yolov5s | adamw 50    | 0.01   | 0.0007  | 0.515   | resume coco2        | 0.61            | ![](https://docimg7.docs.qq.com/image/uI9OFouJavwCSGAK8kk8vg.png?w=1312&h=782/)  | \-           |
+    | coco\_sparsity15 | yolov5s | adamw 100   | 0.01   | 0.001   | 0.501   | resume coco2        | 0.54            | ![](https://docimg4.docs.qq.com/image/wyGMs5I4U_8vsXQLgG6LJg.png?w=1304&h=820/)  | \-           |
