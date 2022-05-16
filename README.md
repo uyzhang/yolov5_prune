@@ -73,3 +73,20 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
     | coco\_sparsity13 | yolov5s | adamw 100   | 0.01   | 0.0005  | 0.533   | resume coco2        | 0.55            | ![](https://docimg2.docs.qq.com/image/Y0eW6Fg3GxQDNT0pUcHqZw.png?w=1314&h=768/)  | [last.pt](https://drive.google.com/drive/folders/13OLCG6qjtFfo-umV-hFdjkT7n32N5JTH?usp=sharing)           |
     | coco\_sparsity14 | yolov5s | adamw 50    | 0.01   | 0.0007  | 0.515   | resume coco2        | 0.61            | ![](https://docimg7.docs.qq.com/image/uI9OFouJavwCSGAK8kk8vg.png?w=1312&h=782/)  | \-           |
     | coco\_sparsity15 | yolov5s | adamw 100   | 0.01   | 0.001   | 0.501   | resume coco2        | 0.54            | ![](https://docimg4.docs.qq.com/image/wyGMs5I4U_8vsXQLgG6LJg.png?w=1304&h=820/)  | \-           |
+
+- The model of pruning coco_sparsity13
+    | coco_sparsity13   | mAP@.5 | Params/FLOPs |
+    |-------------------|--------|--------------|
+    | origin            | 0.537  | 7.2M/16.5G   |
+    | after 10% prune   | 0.5327 | 6.2M/15.6G   |
+    | after 20% prune   | 0.5327 | 5.4M/14.7G   |
+    | after 30% prune   | 0.5324 | 4.4M/13.8G   |
+    | after 33% prune   | 0.5281 | 4.2M/13.6G   |
+    | after 34% prune   | 0.5243 | 4.18M/13.5G  |
+    | after 34.5% prune | 0.5203 | 4.14M/13.5G  |
+    | after 35% prune   | 0.2548 | 4.1M/13.4G   |
+    | after 38% prune   | 0.2018 | 3.88M/13.0G  |
+    | after 40% prune   | 0.1622 | 3.7M/12.7G   |
+    | after 42% prune   | 0.1194 | 3.6M/12.4G   |
+    | after 45% prune   | 0.0537 | 3.4M/12.0G   |
+    | after 50% prune   | 0.0032 | 3.1M/11.4G   |
