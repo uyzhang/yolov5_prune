@@ -12,7 +12,7 @@ The original code comes from : https://github.com/midasklr/yolov5prune.
 2. Basic training
     - In COCO Hand Dataset
         ```shell
-        python train.py --img 640 --batch 32 --epochs 100 --weights weights/yolov5s.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
+        python train.py --img 640 --batch 32 --epochs 100 --weights '' --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
         ```
     - In COCO Dataset
         ```shell
