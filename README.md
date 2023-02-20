@@ -4,59 +4,29 @@ Clean code version of [YOLOv5](https://github.com/ultralytics/yolov5/)(V6) pruni
 The original code comes from : https://github.com/midasklr/yolov5prune.
 
 ### Steps:
-1. Dataset preparation
-    [COCO Hand](http://www.robots.ox.ac.uk/~vgg/data/hands/downloads/hand_dataset.tar.gz) Dataset Download.(COCO Dataset can be prepared according to the steps of the official repository.)
-
-    Convert COCO Hand Dataset to trainable format : [converter](https://github.com/ZJU-lishuang/yolov5-v4/blob/main/data/converter.py).
-    
-2. Basic training
-    - In COCO Hand Dataset
-        ```shell
-        python train.py --img 640 --batch 32 --epochs 100 --weights '' --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand --device 0 --optimizer AdamW
-        ```
+1. Basic training
     - In COCO Dataset
         ```shell
         python train.py --data coco.yaml --cfg yolov5s.yaml --weights '' --batch-size 32 --device 0 --epochs 300 --name coco --optimizer AdamW --data data/coco.yaml
         ```
-3. Sparse training
-    - In COCO Hand Dataset
-        ```shell
-        python train.py --img 640 --batch 32 --epochs 100 --weights runs/train/coco_hand/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.0001 --device 3
-        ```
+2. Sparse training
     - In COCO Dataset
         ```shell
         python train.py --batch 32 --epochs 50 --weights weights/yolov5s.pt --data data/coco.yaml --cfg models/yolov5s.yaml --name coco_sparsity --optimizer AdamW --bn_sparsity --sparsity_rate 0.00005 --device 0
         ```
 
-4. Pruning
-    - In COCO Hand Dataset
-        ```shell
-        python prune.py --percent 0.5 --weights runs/train/coco_hand_sparsity6/weights/last.pt --data data/coco_hand.yaml --cfg models/yolov5s.yaml --imgsz 640
-        ```
+3. Pruning
     - In COCO Dataset
         ```shell
         python prune.py --percent 0.5 --weights runs/train/coco_sparsity13/weights/last.pt --data data/coco.yaml --cfg models/yolov5s.yaml --imgsz 640
         ```
 
-5. Fine-tuning
-    - In COCO Hand Dataset
-        ```shell
-        python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp1/pruned_model.pt  --data data/coco_hand.yaml --cfg models/yolov5s.yaml --name coco_hand_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
-        ```
+4. Fine-tuning
     - In COCO Dataset
         ```shell
         python train.py --img 640 --batch 32 --epochs 100 --weights runs/val/exp1/pruned_model.pt  --data data/coco.yaml --cfg models/yolov5s.yaml --name coco_ft --device 0 --optimizer AdamW --ft_pruned_model --hyp hyp.finetune_prune.yaml
         ```
 ### Experiments
-- Result of COCO Hand Dataset
-
-    | model             | input size | mAP@.5       | Speed NVIDIA TX2(ms) | model size(MB) |
-    | ----------------- | ---- | ------------ | ---------------- | -------------------- |
-    | yolov5s           | 640  | 0.8832 | 44                                | 28M
-    | yolov5s-20%prune  | 640  | 0.8831  | 40                                   | 20M
-    | yolov5s-30%prune  | 640  | 0.8839  | 38                             |18M
-    | yolov5s-40%prune  | 640  | 0.8840  | 36                             |15M
-    | yolov5s-50%prune  | 640  | 0.8850 | 34                            | 11M
 - Result of COCO Dataset
     | exp\_name        | model   | optim&epoch | lr     | sparity | mAP@.5  | note                | prune threshold | BN weight distribution                                                           | Weight |
     | ---------------- | ------- | ----------- | ------ | ------- | ------- | ------------------- | --------------- | -------------------------------------------------------------------------------- | ------------ |
